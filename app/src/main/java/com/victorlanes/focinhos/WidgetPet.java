@@ -85,7 +85,7 @@ public class WidgetPet extends AppWidgetProvider {
         }
         Intent abrir;
         if (p == null) {
-            rv.setTextViewText(R.id.nome, "Meus Focinhos");
+            rv.setTextViewText(R.id.nome, "Anjos de Focinho");
             rv.setTextViewText(R.id.linha1, "Toque para escolher o pet");
             rv.setViewVisibility(R.id.linha2, View.GONE);
             rv.setViewVisibility(R.id.linha3, View.GONE);
@@ -177,7 +177,7 @@ public class WidgetPet extends AppWidgetProvider {
     public static void fixar(Activity a, long petId, boolean qr) {
         AppWidgetManager am = AppWidgetManager.getInstance(a);
         if (!am.isRequestPinAppWidgetSupported()) {
-            Toast.makeText(a, "Segure a tela inicial → Widgets → Meus Focinhos", Toast.LENGTH_LONG).show();
+            Toast.makeText(a, "Segure a tela inicial → Widgets → Anjos de Focinho", Toast.LENGTH_LONG).show();
             return;
         }
         Intent cb = new Intent(a, WidgetPet.class).setAction(ACAO_FIXADO).putExtra("pet", petId).putExtra("qr", qr)

@@ -23,6 +23,7 @@
         </activity>
         <activity android:name=".PetActivity" android:exported="false" android:launchMode="singleTop" />
         <activity android:name=".PetFormActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ListaActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".RegistroActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
 
         <activity android:name=".BloqueioActivity" android:exported="false" android:launchMode="singleTop"

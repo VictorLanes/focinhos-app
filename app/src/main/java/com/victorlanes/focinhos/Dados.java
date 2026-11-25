@@ -353,7 +353,7 @@ public final class Dados {
 
     public static JSONObject exportar(Context c) throws JSONException {
         JSONObject o = new JSONObject();
-        o.put("app", "MeusFocinhos").put("versao", 1);
+        o.put("app", "AnjosDeFocinho").put("versao", 1);
         o.put("pets", new JSONArray(sp(c).getString("pets", "[]")));
         o.put("registros", new JSONArray(sp(c).getString("registros", "[]")));
         o.put("lembretes", new JSONArray(sp(c).getString("lembretes", "[]")));
@@ -372,7 +372,7 @@ public final class Dados {
     }
 
     public static void importar(Context c, JSONObject o) throws Exception {
-        if (!o.has("pets")) throw new Exception("Arquivo não é um backup do Meus Focinhos");
+        if (!o.has("pets")) throw new Exception("Arquivo não é um backup do Anjos de Focinho");
         JSONObject fotos = o.optJSONObject("fotos");
         if (fotos != null) {
             File dir = new File(c.getFilesDir(), "fotos");

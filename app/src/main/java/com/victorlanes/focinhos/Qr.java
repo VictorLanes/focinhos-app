@@ -122,7 +122,7 @@ public final class Qr {
             break;
         }
         if (vet != null) s.append("\n🩺 Última consulta: ").append(Datas.br(vet.data)).append(vet.clinica.isEmpty() ? "" : " - " + vet.clinica).append("\n");
-        s.append("\nGerado pelo app Meus Focinhos em ").append(Datas.br(Datas.hoje()));
+        s.append("\nGerado pelo app Anjos de Focinho em ").append(Datas.br(Datas.hoje()));
         return s.toString();
     }
 

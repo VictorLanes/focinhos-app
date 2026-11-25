@@ -1,4 +1,4 @@
-# Meus Focinhos 🐾
+# Anjos de Focinho 🐾
 
 App Android para cuidar dos seus filhos de focinho: cadastro do pet e do proprietário, histórico completo,
 carteira de vacinação, peso, gastos, lembretes e carteirinha para compartilhar.

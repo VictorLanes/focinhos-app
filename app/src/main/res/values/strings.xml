@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Meus Focinhos</string>
+    <string name="app_name">Anjos de Focinho</string>
     <string name="widget_nome">Meu pet</string>
     <string name="widget_desc">Foto do dog, próxima vacina e lembretes</string>
 </resources>

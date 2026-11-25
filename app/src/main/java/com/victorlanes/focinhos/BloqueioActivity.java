@@ -87,7 +87,7 @@ public class BloqueioActivity extends Activity {
             titulo.setText("Digite seu PIN atual");
             sub.setText("Para alterar o bloqueio");
         } else {
-            titulo.setText("Meus Focinhos");
+            titulo.setText("Anjos de Focinho");
             sub.setText(Trava.digital(this) && Trava.temBiometria(this) ? "Use a digital ou digite o PIN" : "Digite o PIN para entrar");
         }
     }
@@ -148,7 +148,7 @@ public class BloqueioActivity extends Activity {
         if (cancelar != null) cancelar.cancel();
         cancelar = new CancellationSignal();
         android.hardware.biometrics.BiometricPrompt.Builder b = new android.hardware.biometrics.BiometricPrompt.Builder(this)
-                .setTitle("Meus Focinhos")
+                .setTitle("Anjos de Focinho")
                 .setSubtitle("Toque no sensor para entrar")
                 .setNegativeButton("Usar PIN", getMainExecutor(), (d, w) -> {
                 });

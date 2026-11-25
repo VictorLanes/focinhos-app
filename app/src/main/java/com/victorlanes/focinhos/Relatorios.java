@@ -66,7 +66,7 @@ public final class Relatorios {
         branco.setColor(0xFFFFFFFF);
         cv.drawRoundRect(new RectF(36, 160, W - 36, H - 36), 36, 36, branco);
         cv.drawText("CARTEIRINHA PET", 60, 85, p(0xFFFFFFFF, 46, true));
-        cv.drawText("Meus Focinhos 🐾", 60, 130, p(0xDDFFFFFF, 28, false));
+        cv.drawText("Anjos de Focinho 🐾", 60, 130, p(0xDDFFFFFF, 28, false));
 
         // foto
         float cx = 200, cy = 340, r = 125;
@@ -152,7 +152,7 @@ public final class Relatorios {
         }
         Paint m = p(0xDDFFFFFF, 24, false);
         m.setTextAlign(Paint.Align.CENTER);
-        cv.drawText("Meus Focinhos 🐾", W / 2f, H - 50, m);
+        cv.drawText("Anjos de Focinho 🐾", W / 2f, H - 50, m);
         File out = new File(Arquivos.pasta(c), "QR_Coleira_" + nome(pet.nome) + ".png");
         try (FileOutputStream fo = new FileOutputStream(out)) {
             bmp.compress(Bitmap.CompressFormat.PNG, 100, fo);
@@ -259,7 +259,7 @@ public final class Relatorios {
         Bitmap f = Fotos.carregar(c, pet.foto);
         if (f != null) d.cv.drawBitmap(Bitmap.createScaledBitmap(f, 70, 70, true), Pdf.W - Pdf.M - 70, 10, null);
         d.cv.drawText("Ficha do pet: " + pet.nome, Pdf.M, 45, p(0xFFFFFFFF, 22, true));
-        d.cv.drawText("Gerada em " + Datas.br(Datas.hoje()) + " pelo app Meus Focinhos", Pdf.M, 70, p(0xEEFFFFFF, 11, false));
+        d.cv.drawText("Gerada em " + Datas.br(Datas.hoje()) + " pelo app Anjos de Focinho", Pdf.M, 70, p(0xEEFFFFFF, 11, false));
         d.y = 110;
 
         d.texto("Dados do pet", 15, 0xFFF26B2E, true);

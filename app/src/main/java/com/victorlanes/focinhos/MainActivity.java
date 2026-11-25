@@ -35,6 +35,8 @@ public class MainActivity extends Activity {
     private static final int REQ_SALVAR = 31, REQ_ABRIR = 32;
     private Ui.Cores k;
     private String busca = "";
+    private long petFiltro;
+    private ScrollView rolagem;
     private LinearLayout lista;
 
     @Override
@@ -63,6 +65,7 @@ public class MainActivity extends Activity {
         raiz.setBackgroundColor(k.fundo);
         setContentView(raiz);
         ScrollView sv = new ScrollView(this);
+        rolagem = sv;
         LinearLayout col = Ui.coluna(this);
         col.setPadding(dp(16), dp(14), dp(16), dp(110));
         sv.addView(col);
@@ -71,7 +74,7 @@ public class MainActivity extends Activity {
 
         LinearLayout topo = Ui.linha(this);
         LinearLayout tt = Ui.coluna(this);
-        tt.addView(Ui.texto(this, "Meus Focinhos 🐾", 28, k.texto, true));
+        tt.addView(Ui.texto(this, "Anjos de Focinho 🐾", 28, k.texto, true));
         tt.addView(Ui.texto(this, saudacao(), 14, k.sub, false));
         topo.addView(tt, Ui.lp(0, -2, 1f));
         TextView menu = Ui.texto(this, "⋮", 26, k.texto, true);
@@ -84,15 +87,20 @@ public class MainActivity extends Activity {
         if (pets.isEmpty()) {
             boasVindas(col);
         } else {
+            if (petFiltro != 0 && Dados.pet(this, petFiltro) == null) petFiltro = 0;
+            if (pets.size() > 1) col.addView(Detalhes.filtroPets(this, petFiltro, id -> {
+                petFiltro = id;
+                montar();
+            }));
             resumo(col, pets);
             proximos(col);
-            TextView t = Ui.texto(this, "Meus filhos de focinho (" + pets.size() + ")", 18, k.texto, true);
+            TextView t = Ui.texto(this, petFiltro != 0 ? "Focinho selecionado" : "Meus anjos de focinho (" + pets.size() + ")", 18, k.texto, true);
             t.setPadding(dp(4), dp(22), 0, dp(2));
             col.addView(t);
-            if (pets.size() > 4) {
+            if (pets.size() > 1 && petFiltro == 0) {
                 EditText e = new EditText(this);
                 Campos.estilo(this, e);
-                e.setHint("🔎  Buscar por nome, raça ou dono");
+                e.setHint("🔎  Buscar por nome, raça, dono ou plano");
                 e.setSingleLine(true);
                 e.setText(busca);
                 e.addTextChangedListener(new TextWatcher() {
@@ -145,7 +153,7 @@ public class MainActivity extends Activity {
         lp.topMargin = dp(24);
         col.addView(c, lp);
         c.addView(Ui.texto(this, "🐶", 64, 0, false));
-        TextView t = Ui.texto(this, "Bem-vindo ao Meus Focinhos!", 20, 0xFFFFFFFF, true);
+        TextView t = Ui.texto(this, "Bem-vindo ao Anjos de Focinho!", 20, 0xFFFFFFFF, true);
         t.setGravity(Gravity.CENTER);
         c.addView(t);
         TextView s = Ui.texto(this, "Cadastre seu primeiro dog e guarde aqui as consultas, vacinas, remédios, banhos, peso e gastos. "
@@ -161,85 +169,126 @@ public class MainActivity extends Activity {
     private void resumo(LinearLayout col, List<Dados.Pet> pets) {
         String mes = Datas.hoje().substring(0, 7);
         long gasto = 0;
-        int atrasadas = 0;
-        for (Dados.Registro r : Dados.registros(this, 0)) if (r.data.startsWith(mes)) gasto += r.valor;
-        for (Dados.Pet p : pets)
-            for (Dados.Registro v : Relatorios.vacinasAtuais(this, p.id)) if (!v.proxima.isEmpty() && Datas.diasAte(v.proxima) < 0) atrasadas++;
-        int pend = 0;
-        for (Dados.Lembrete l : Dados.lembretes(this, 0)) if (!l.feito && Datas.diasAte(l.data) <= 7) pend++;
-
-        LinearLayout l = Ui.linha(this);
-        l.setPadding(0, dp(16), 0, 0);
-        mini(l, "🐾", String.valueOf(pets.size()), pets.size() == 1 ? "focinho" : "focinhos", 0);
-        mini(l, "💰", Dados.reais(gasto), "gastos no mês", 0);
-        if (atrasadas > 0) mini(l, "💉", String.valueOf(atrasadas), atrasadas == 1 ? "vacina atrasada" : "vacinas atrasadas", 0xFFEF4444);
-        else mini(l, "🔔", String.valueOf(pend), "lembretes na semana", 0);
-        col.addView(l);
+        int atrasadas = 0, breve = 0;
+        for (Dados.Registro r : Dados.registros(this, petFiltro)) if (r.data.startsWith(mes)) gasto += r.valor;
+        for (Dados.Pet p : pets) {
+            if (petFiltro != 0 && p.id != petFiltro) continue;
+            for (Dados.Registro v : Relatorios.vacinasAtuais(this, p.id)) {
+                if (v.proxima.isEmpty()) continue;
+                int d = Datas.diasAte(v.proxima);
+                if (d < 0) atrasadas++;
+                else if (d <= 30) breve++;
+            }
+        }
+        int semana = 0, atrasados = 0;
+        for (Dados.Lembrete l : Dados.lembretes(this, petFiltro)) {
+            if (l.feito || Dados.pet(this, l.petId) == null) continue;
+            int d = Datas.diasAte(l.data);
+            if (d < 0) atrasados++;
+            else if (d <= 7) semana++;
+        }
+        LinearLayout l1 = Ui.linha(this), l2 = Ui.linha(this);
+        l1.setPadding(0, dp(14), 0, 0);
+        l2.setPadding(0, dp(8), 0, 0);
+        Dados.Pet sel = petFiltro != 0 ? Dados.pet(this, petFiltro) : null;
+        mini(l1, "🐾", sel != null ? sel.nome : String.valueOf(pets.size()), sel != null ? "abrir a ficha →" : pets.size() == 1 ? "focinho" : "focinhos", 0, v -> {
+            if (sel != null) startActivity(new Intent(this, PetActivity.class).putExtra("pet", sel.id));
+            else if (lista != null) rolagem.smoothScrollTo(0, lista.getTop());
+        });
+        mini(l1, "💰", Dados.reais(gasto), "gastos no mês · ver tudo →", 0, v -> abrirLista("gastos"));
+        mini(l2, "🔔", atrasados > 0 ? atrasados + " atrasado" + (atrasados > 1 ? "s" : "") : String.valueOf(semana),
+                atrasados > 0 ? "lembretes · ver →" : "lembretes na semana →", atrasados > 0 ? 0xFFEF4444 : 0, v -> abrirLista("lembretes"));
+        mini(l2, "💉", atrasadas > 0 ? atrasadas + " atrasada" + (atrasadas > 1 ? "s" : "") : String.valueOf(breve),
+                atrasadas > 0 ? "vacinas · ver →" : "vacinas em 30 dias →", atrasadas > 0 ? 0xFFEF4444 : 0, v -> abrirLista("vacinas"));
+        col.addView(l1);
+        col.addView(l2);
     }
 
-    private void mini(LinearLayout l, String e, String v, String r, int cor) {
+    private void abrirLista(String modo) {
+        startActivity(new Intent(this, ListaActivity.class).putExtra("modo", modo).putExtra("pet", petFiltro));
+    }
+
+    private void mini(LinearLayout l, String e, String v, String r, int cor, View.OnClickListener cl) {
         LinearLayout c = Ui.coluna(this);
-        c.setBackground(Ui.fundo(k.superficie, dp(18)));
-        c.setPadding(dp(12), dp(12), dp(10), dp(12));
+        c.setBackground(Ui.clicavel(k.superficie, dp(18), 0x22000000));
+        c.setPadding(dp(14), dp(12), dp(10), dp(12));
         c.setElevation(dp(1));
-        c.addView(Ui.texto(this, e, 18, 0, false));
-        TextView t = Ui.texto(this, v, 17, cor != 0 ? cor : k.texto, true);
+        c.addView(Ui.texto(this, e, 20, 0, false));
+        TextView t = Ui.texto(this, v, 18, cor != 0 ? cor : k.texto, true);
         t.setMaxLines(1);
         t.setEllipsize(TextUtils.TruncateAt.END);
         c.addView(t);
-        TextView s = Ui.texto(this, r, 11, k.sub, false);
-        s.setMaxLines(2);
+        TextView s = Ui.texto(this, r, 12, k.sub, false);
+        s.setMaxLines(1);
+        s.setEllipsize(TextUtils.TruncateAt.END);
         c.addView(s);
+        c.setOnClickListener(cl);
         LinearLayout.LayoutParams lp = Ui.lp(0, -1, 1f);
         if (l.getChildCount() > 0) lp.leftMargin = dp(8);
         l.addView(c, lp);
     }
 
     private void proximos(LinearLayout col) {
-        List<Dados.Lembrete> ls = Dados.lembretes(this, 0);
+        List<Dados.Lembrete> ls = Dados.lembretes(this, petFiltro);
+        LinearLayout cab = Ui.linha(this);
+        cab.setPadding(dp(4), dp(22), 0, 0);
+        cab.addView(Ui.texto(this, "🔔  Próximos lembretes", 18, k.texto, true), Ui.lp(0, -2, 1f));
+        TextView todos = Ui.texto(this, "Ver todos →", 14, k.destaque, true);
+        todos.setOnClickListener(v -> abrirLista("lembretes"));
+        cab.addView(todos);
+        col.addView(cab);
         int n = 0;
-        LinearLayout c = null;
         for (Dados.Lembrete m : ls) {
-            if (m.feito || Datas.diasAte(m.data) > 30) continue;
-            Dados.Pet p = Dados.pet(this, m.petId);
-            if (p == null) continue;
-            if (c == null) {
-                c = Ui.secao(this, col, "🔔  Próximos lembretes", null);
-            }
-            LinearLayout li = Ui.linha(this);
-            li.setPadding(0, dp(10), 0, 0);
-            li.addView(Fotos.avatar(this, p, dp(36)));
-            LinearLayout t = Ui.coluna(this);
-            t.setPadding(dp(10), 0, 0, 0);
-            TextView ti = Ui.texto(this, p.nome + " · " + m.titulo, 14, k.texto, true);
-            ti.setMaxLines(1);
-            ti.setEllipsize(TextUtils.TruncateAt.END);
-            t.addView(ti);
-            int d = Datas.diasAte(m.data);
-            t.addView(Ui.texto(this, Datas.br(m.data) + " · " + Datas.relativo(m.data), 12, d < 0 ? 0xFFEF4444 : k.sub, false));
-            li.addView(t, Ui.lp(0, -2, 1f));
-            li.setOnClickListener(v -> startActivity(new Intent(this, PetActivity.class).putExtra("pet", p.id).putExtra("aba", "lembretes")));
-            c.addView(li);
+            if (m.feito || Datas.diasAte(m.data) > 30 || Dados.pet(this, m.petId) == null) continue;
+            col.addView(Detalhes.itemLembrete(this, m, true, this::montar));
             if (++n == 4) break;
         }
-        // aniversários do mês
+        // aniversários
         for (Dados.Pet p : Dados.pets(this)) {
-            if (p.nascimento.isEmpty()) continue;
-            int d = Datas.diasAte(Datas.proximoAniversario(p.nascimento));
+            if (p.nascimento.isEmpty() || (petFiltro != 0 && p.id != petFiltro)) continue;
+            String an = Datas.proximoAniversario(p.nascimento);
+            int d = Datas.diasAte(an);
             if (d > 30) continue;
-            if (c == null) c = Ui.secao(this, col, "🔔  Próximos lembretes", null);
-            TextView t = Ui.texto(this, "🎂  " + p.nome + (d == 0 ? " faz aniversário hoje!" : " faz aniversário " + Datas.relativo(Datas.proximoAniversario(p.nascimento))), 14, k.texto, false);
-            t.setPadding(0, dp(10), 0, 0);
-            c.addView(t);
+            LinearLayout li = Ui.linha(this);
+            li.setBackground(Ui.clicavel(k.superficie, dp(18), 0x22000000));
+            li.setPadding(dp(12), dp(12), dp(12), dp(12));
+            li.addView(Fotos.avatar(this, p, dp(40)));
+            TextView t = Ui.texto(this, "🎂  " + p.nome + (d == 0 ? " faz aniversário hoje!" : " faz aniversário " + Datas.relativo(an)), 14, k.texto, true);
+            t.setPadding(dp(12), 0, 0, 0);
+            li.addView(t, Ui.lp(0, -2, 1f));
+            li.setOnClickListener(v -> startActivity(new Intent(this, PetActivity.class).putExtra("pet", p.id)));
+            LinearLayout.LayoutParams lp = Ui.lp(-1, -2);
+            lp.topMargin = dp(10);
+            col.addView(li, lp);
+            n++;
+        }
+        if (n == 0) {
+            LinearLayout vz = Ui.linha(this);
+            vz.setBackground(Ui.clicavel(k.superficie, dp(18), 0x22000000));
+            vz.setPadding(dp(14), dp(14), dp(14), dp(14));
+            vz.addView(Ui.texto(this, "Nada para os próximos 30 dias. Toque para criar um lembrete ＋", 14, k.sub, false), Ui.lp(0, -2, 1f));
+            vz.setOnClickListener(v -> Detalhes.novoLembrete(this, petFiltro, this::montar));
+            LinearLayout.LayoutParams lp = Ui.lp(-1, -2);
+            lp.topMargin = dp(10);
+            col.addView(vz, lp);
         }
     }
 
     private void pintarLista(List<Dados.Pet> pets) {
         lista.removeAllViews();
         String q = busca.trim().toLowerCase();
+        int n = 0;
         for (Dados.Pet p : pets) {
-            if (!q.isEmpty() && !(p.nome + " " + p.raca + " " + p.donoNome).toLowerCase().contains(q)) continue;
+            if (petFiltro != 0 && p.id != petFiltro) continue;
+            if (!q.isEmpty() && !(p.nome + " " + p.raca + " " + p.donoNome + " " + p.plano + " " + p.cor).toLowerCase().contains(q)) continue;
+            n++;
             lista.addView(cartaoPet(p));
+        }
+        if (n == 0) {
+            TextView t = Ui.texto(this, "Nenhum focinho encontrado para \"" + busca.trim() + "\"", 14, k.sub, false);
+            t.setGravity(Gravity.CENTER);
+            t.setPadding(0, dp(24), 0, 0);
+            lista.addView(t);
         }
     }
 
@@ -294,7 +343,7 @@ public class MainActivity extends Activity {
             }
             if (w == 0) {
                 Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json")
-                        .putExtra(Intent.EXTRA_TITLE, "MeusFocinhos_backup_" + Datas.hoje() + ".json");
+                        .putExtra(Intent.EXTRA_TITLE, "AnjosDeFocinho_backup_" + Datas.hoje() + ".json");
                 startActivityForResult(i, REQ_SALVAR);
             } else if (w == 1) {
                 Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");

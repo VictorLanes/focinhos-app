@@ -443,48 +443,7 @@ public class PetActivity extends Activity {
 
     /** detalhes do registro com lápis (editar) e X (excluir) */
     private void detalhes(Dados.Registro r) {
-        LinearLayout v = Ui.coluna(this);
-        v.setPadding(dp(22), dp(18), dp(22), dp(6));
-        LinearLayout top = Ui.linha(this);
-        top.addView(Ui.texto(this, r.emoji() + "  " + r.nomeTipo(), 20, k.texto, true), Ui.lp(0, -2, 1f));
-        TextView lapis = Ui.texto(this, "✏️", 22, 0, false);
-        lapis.setPadding(dp(10), dp(4), dp(10), dp(4));
-        TextView x = Ui.texto(this, "✕", 22, 0xFFEF4444, true);
-        x.setPadding(dp(10), dp(4), dp(4), dp(4));
-        top.addView(lapis);
-        top.addView(x);
-        v.addView(top);
-        linhaDet(v, "Data", Datas.br(r.data) + " (" + Datas.relativo(r.data) + ")");
-        if (!r.tipo.equals("peso")) linhaDet(v, r.tipo.equals("vacina") ? "Qual vacina" : r.tipo.equals("consulta") ? "Motivo" : "O quê", r.titulo);
-        linhaDet(v, r.tipo.equals("banho") ? "Pet shop" : "Veterinário / clínica", r.clinica);
-        if (r.tipo.equals("consulta")) linhaDet(v, "Teve procedimento?", r.procedimento.isEmpty() ? "Não" : "Sim — " + r.procedimento);
-        linhaDet(v, r.tipo.equals("consulta") ? "Descrição da consulta" : "Descrição", r.descricao);
-        if (r.peso > 0) linhaDet(v, "Peso", Datas.kg(r.peso));
-        if (!r.tipo.equals("peso")) linhaDet(v, "Valor cobrado", r.valor > 0 ? Dados.reais(r.valor) + (r.plano ? " · coberto pelo plano" : "") : "Sem custo");
-        if (!r.proxima.isEmpty()) linhaDet(v, r.tipo.equals("vacina") ? "Próxima dose" : "Próxima data", Datas.br(r.proxima) + " (" + Datas.relativo(r.proxima) + ")");
-        AlertDialog d = new AlertDialog.Builder(this).setView(v).setPositiveButton("Fechar", null).create();
-        lapis.setOnClickListener(z -> {
-            d.dismiss();
-            startActivity(new Intent(this, RegistroActivity.class).putExtra("registro", r.id));
-        });
-        x.setOnClickListener(z -> new AlertDialog.Builder(this).setTitle("Excluir este registro?").setMessage(r.resumo() + " · " + Datas.br(r.data))
-                .setPositiveButton("Excluir", (a, w) -> {
-                    Dados.removerRegistro(this, r.id);
-                    Avisos.agendar(this);
-                    d.dismiss();
-                    montar();
-                }).setNegativeButton("Cancelar", null).show());
-        d.show();
-    }
-
-    private void linhaDet(LinearLayout v, String r, String val) {
-        if (val == null || val.isEmpty()) return;
-        TextView a = Ui.texto(this, r, 12, k.sub, true);
-        a.setPadding(0, dp(12), 0, dp(2));
-        v.addView(a);
-        TextView b = Ui.texto(this, val, 16, k.texto, false);
-        b.setTextIsSelectable(true);
-        v.addView(b);
+        Detalhes.registro(this, r, this::montar);
     }
 
     // ================================================================== VACINAS
@@ -731,6 +690,10 @@ public class PetActivity extends Activity {
         for (long v : porMes.values()) media += v;
         media = meses == 0 ? 0 : media / 12;
         c.addView(Ui.texto(this, "Média mensal (12 meses): " + Dados.reais(media), 12, 0xCCFFFFFF, false));
+        TextView tudo = Ui.texto(this, "Ver todos os lançamentos com detalhes →", 14, 0xFFFFD2BA, true);
+        tudo.setPadding(0, dp(10), 0, 0);
+        tudo.setOnClickListener(v -> startActivity(new Intent(this, ListaActivity.class).putExtra("modo", "gastos").putExtra("pet", pet.id).putExtra("periodo", "tudo")));
+        c.addView(tudo);
 
         LinearLayout t = cartao();
         t.addView(Ui.texto(this, "Por categoria", 16, k.texto, true));
@@ -818,116 +781,15 @@ public class PetActivity extends Activity {
     }
 
     private View itemLembrete(Dados.Lembrete m) {
-        LinearLayout c = Ui.linha(this);
-        c.setBackground(Ui.clicavel(k.superficie, dp(18), 0x22000000));
-        c.setPadding(dp(14), dp(12), dp(10), dp(12));
-        int d = Datas.diasAte(m.data);
-        TextView ic = Ui.texto(this, m.feito ? "✅" : d < 0 ? "⏰" : "🔔", 22, 0, false);
-        c.addView(ic);
-        LinearLayout t = Ui.coluna(this);
-        t.setPadding(dp(12), 0, dp(8), 0);
-        TextView ti = Ui.texto(this, m.titulo, 15, m.feito ? k.sub : k.texto, true);
-        if (m.feito) ti.setPaintFlags(ti.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-        t.addView(ti);
-        String rep = m.repetirDias == 0 ? "" : " · repete a cada " + (m.repetirDias == 365 ? "ano" : m.repetirDias + " dias");
-        t.addView(Ui.texto(this, Datas.br(m.data) + " às " + Campos.hora(m.hora, m.minuto) + (m.feito ? "" : " · " + Datas.relativo(m.data)) + rep, 12,
-                !m.feito && d < 0 ? 0xFFEF4444 : k.sub, false));
-        c.addView(t, Ui.lp(0, -2, 1f));
-        if (!m.feito) {
-            TextView ok = Ui.texto(this, "✓", 20, k.destaque, true);
-            ok.setGravity(Gravity.CENTER);
-            ok.setBackground(Ui.clicavel(k.chipSel, dp(18), 0x22000000));
-            ok.setOnClickListener(v -> {
-                Avisos.marcarFeito(this, m);
-                Toast.makeText(this, m.repetirDias > 0 ? "Feito! Próximo em " + Datas.br(m.data) : "Feito ✅", Toast.LENGTH_SHORT).show();
-                pintarAba();
-            });
-            c.addView(ok, Ui.lp(dp(40), dp(40)));
-        }
-        c.setOnClickListener(v -> editarLembrete(m));
-        LinearLayout.LayoutParams lp = Ui.lp(-1, -2);
-        lp.topMargin = dp(10);
-        c.setLayoutParams(lp);
-        return c;
+        return Detalhes.itemLembrete(this, m, false, this::pintarAba);
     }
 
     private void editarLembrete(Dados.Lembrete orig) {
-        boolean novo = orig == null;
-        Dados.Lembrete m = novo ? new Dados.Lembrete() : orig;
-        if (novo) {
-            m.petId = pet.id;
-            m.data = Datas.somarDias(Datas.hoje(), 1);
-        }
-        ScrollView sv = new ScrollView(this);
-        LinearLayout v = Ui.coluna(this);
-        v.setPadding(dp(20), dp(6), dp(20), dp(6));
-        sv.addView(v);
-        EditText ti = Campos.texto(this, v, "Lembrar de", m.titulo, "Ex.: Dar vermífugo", false);
-        ti.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        String[][] pre = {{"💊 Vermífugo", "Dar vermífugo", "90"}, {"🦟 Antipulgas", "Aplicar antipulgas", "30"}, {"🛁 Banho", "Banho", "15"},
-                {"💉 Vacina", "Vacina", "365"}, {"💊 Remédio", "Dar remédio", "0"}, {"🩺 Consulta", "Consulta no veterinário", "0"}, {"🦷 Dentes", "Escovar os dentes", "7"}};
-        LinearLayout pl = Ui.linha(this);
-        pl.setPadding(0, dp(8), 0, 0);
-        final int[] rep = {m.repetirDias};
-        String[] reps = {"0", "1", "7", "15", "30", "90", "365"};
-        String[] repN = {"Não repete", "Todo dia", "7 dias", "15 dias", "30 dias", "3 meses", "1 ano"};
-        Ui.Chips chipsRep = new Ui.Chips(this, reps, repN, String.valueOf(m.repetirDias), id -> rep[0] = Integer.parseInt(id));
-        for (String[] p : pre) {
-            TextView c = Ui.texto(this, p[0], 13, k.texto, false);
-            c.setPadding(dp(12), dp(7), dp(12), dp(7));
-            c.setBackground(Ui.clicavel(k.chip, dp(14), 0x22000000));
-            c.setOnClickListener(z -> {
-                ti.setText(p[1]);
-                rep[0] = Integer.parseInt(p[2]);
-                chipsRep.selecionar(p[2]);
-            });
-            LinearLayout.LayoutParams lp = Ui.lp(-2, -2);
-            lp.rightMargin = dp(6);
-            pl.addView(c, lp);
-        }
-        android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
-        hs.setHorizontalScrollBarEnabled(false);
-        hs.addView(pl);
-        v.addView(hs);
-        Campos.Data dt = Campos.Data.criar(this, v, "Dia", m.data, false, "Escolha");
-        Campos.rotulo(this, v, "Horário", false);
-        final int[] hm = {m.hora, m.minuto};
-        TextView hora = Ui.texto(this, "🕘  " + Campos.hora(m.hora, m.minuto), 16, k.texto, false);
-        hora.setBackground(Campos.caixa(this));
-        hora.setPadding(dp(14), dp(13), dp(14), dp(13));
-        hora.setOnClickListener(z -> Campos.escolherHora(this, hm[0], hm[1], (tp, h, mi) -> {
-            hm[0] = h;
-            hm[1] = mi;
-            hora.setText("🕘  " + Campos.hora(h, mi));
-        }));
-        v.addView(hora);
-        Campos.rotulo(this, v, "Repetir", false);
-        v.addView(chipsRep.view);
-
-        AlertDialog.Builder b = new AlertDialog.Builder(this).setTitle(novo ? "Novo lembrete" : "Editar lembrete").setView(sv)
-                .setPositiveButton("Salvar", (d, w) -> {
-                    String t = ti.getText().toString().trim();
-                    if (t.isEmpty() || dt.valor().isEmpty()) {
-                        Toast.makeText(this, "Preencha o que lembrar e o dia", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    m.titulo = t;
-                    m.data = dt.valor();
-                    m.hora = hm[0];
-                    m.minuto = hm[1];
-                    m.repetirDias = rep[0];
-                    m.feito = false;
-                    Dados.salvarLembrete(this, m);
-                    Avisos.agendar(this);
-                    aba = "lembretes";
-                    pintarAba();
-                }).setNegativeButton("Cancelar", null);
-        if (!novo) b.setNeutralButton("Excluir", (d, w) -> {
-            Dados.removerLembrete(this, m.id);
-            Avisos.agendar(this);
+        if (orig == null) Detalhes.lembrete(this, null, pet.id, () -> {
+            aba = "lembretes";
             pintarAba();
         });
-        b.show();
+        else Detalhes.lembrete(this, orig, pet.id, this::pintarAba);
     }
 
     // ================================================================== FICHA
