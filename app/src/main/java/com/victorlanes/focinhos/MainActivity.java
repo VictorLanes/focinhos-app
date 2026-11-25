@@ -284,8 +284,14 @@ public class MainActivity extends Activity {
     // ================================================================== menu
 
     private void menu() {
-        String[] op = {"💾  Fazer backup (salvar arquivo)", "📂  Restaurar backup", "🎨  Tema: " + nomeTema(Dados.tema(this))};
-        new AlertDialog.Builder(this).setItems(op, (d, w) -> {
+        String[] op = {"🔒  Bloqueio: " + (Trava.ativa(this) ? "ligado" : "desligado"), "💾  Fazer backup (salvar arquivo)", "📂  Restaurar backup",
+                "🎨  Tema: " + nomeTema(Dados.tema(this))};
+        new AlertDialog.Builder(this).setItems(op, (d, w0) -> {
+            int w = w0 - 1;
+            if (w0 == 0) {
+                bloqueio();
+                return;
+            }
             if (w == 0) {
                 Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json")
                         .putExtra(Intent.EXTRA_TITLE, "MeusFocinhos_backup_" + Datas.hoje() + ".json");
@@ -304,6 +310,35 @@ public class MainActivity extends Activity {
         }).show();
     }
 
+    private static final int REQ_CRIAR = 41, REQ_CONFERIR_MUDAR = 42, REQ_CONFERIR_DESLIGAR = 43;
+
+    private void bloqueio() {
+        if (!Trava.ativa(this)) {
+            new AlertDialog.Builder(this).setTitle("🔒 Bloquear o app")
+                    .setMessage("O app vai pedir PIN" + (Trava.temBiometria(this) ? " ou digital" : "") + " ao abrir, protegendo RG, CPF e endereço. "
+                            + "Se esquecer o PIN não há como recuperar, então faça um backup antes.\n\nQuantos números?")
+                    .setPositiveButton("4 números", (d, w) -> criarPin(4))
+                    .setNeutralButton("6 números", (d, w) -> criarPin(6))
+                    .setNegativeButton("Cancelar", null).show();
+            return;
+        }
+        boolean bio = Trava.temBiometria(this);
+        String[] op = bio ? new String[]{(Trava.digital(this) ? "✅" : "⬜") + "  Desbloquear com a digital", "🔢  Trocar o PIN", "🔓  Desligar o bloqueio"}
+                : new String[]{"🔢  Trocar o PIN", "🔓  Desligar o bloqueio"};
+        new AlertDialog.Builder(this).setTitle("🔒 Bloqueio").setItems(op, (d, w) -> {
+            int i = bio ? w : w + 1;
+            if (i == 0) {
+                Trava.definirDigital(this, !Trava.digital(this));
+                Toast.makeText(this, Trava.digital(this) ? "Digital ativada 👆" : "Digital desativada", Toast.LENGTH_SHORT).show();
+            } else if (i == 1) startActivityForResult(new Intent(this, BloqueioActivity.class).putExtra("modo", "conferir"), REQ_CONFERIR_MUDAR);
+            else startActivityForResult(new Intent(this, BloqueioActivity.class).putExtra("modo", "conferir"), REQ_CONFERIR_DESLIGAR);
+        }).show();
+    }
+
+    private void criarPin(int tam) {
+        startActivityForResult(new Intent(this, BloqueioActivity.class).putExtra("modo", "criar").putExtra("tamanho", tam), REQ_CRIAR);
+    }
+
     private String nomeTema(String t) {
         return t.equals("claro") ? "Claro" : t.equals("escuro") ? "Escuro" : "Igual ao celular";
     }
@@ -311,6 +346,25 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent d) {
         super.onActivityResult(req, res, d);
+        if (req == REQ_CRIAR && res == RESULT_OK) {
+            boolean bio = Trava.temBiometria(this);
+            if (bio) new AlertDialog.Builder(this).setTitle("PIN criado ✅").setMessage("Quer desbloquear também com a digital?")
+                    .setPositiveButton("Sim", (a, w) -> Trava.definirDigital(this, true)).setNegativeButton("Só PIN", null).show();
+            else Toast.makeText(this, "Bloqueio ativado 🔒", Toast.LENGTH_SHORT).show();
+            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+            return;
+        }
+        if (req == REQ_CONFERIR_MUDAR && res == RESULT_OK) {
+            new AlertDialog.Builder(this).setTitle("Novo PIN").setPositiveButton("4 números", (a, w) -> criarPin(4))
+                    .setNeutralButton("6 números", (a, w) -> criarPin(6)).setNegativeButton("Cancelar", null).show();
+            return;
+        }
+        if (req == REQ_CONFERIR_DESLIGAR && res == RESULT_OK) {
+            Trava.desativar(this);
+            getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+            Toast.makeText(this, "Bloqueio desligado 🔓", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (res != RESULT_OK || d == null || d.getData() == null) return;
         Uri u = d.getData();
         if (req == REQ_SALVAR) {

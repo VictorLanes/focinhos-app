@@ -43,3 +43,8 @@ android {
         abortOnError false
     }
 }
+
+dependencies {
+    // gerador de QR code (biblioteca pura em Java, ~500 KB)
+    implementation 'com.google.zxing:core:3.5.3'
+}

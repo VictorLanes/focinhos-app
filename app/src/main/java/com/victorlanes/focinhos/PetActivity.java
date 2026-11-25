@@ -162,6 +162,10 @@ public class PetActivity extends Activity {
         voltar.setOnClickListener(v -> finish());
         barra.addView(voltar);
         barra.addView(new View(this), Ui.lp(0, 1, 1f));
+        TextView qrb = Ui.texto(this, "▦", 24, 0xFFFFFFFF, true);
+        qrb.setPadding(dp(10), dp(4), dp(10), dp(6));
+        qrb.setOnClickListener(v -> qrColeira());
+        barra.addView(qrb);
         TextView comp = Ui.texto(this, "📤", 22, 0xFFFFFFFF, false);
         comp.setPadding(dp(10), dp(6), dp(10), dp(6));
         comp.setOnClickListener(v -> compartilhar());
@@ -960,9 +964,19 @@ public class PetActivity extends Activity {
 
         LinearLayout b = Ui.coluna(this);
         b.setPadding(0, dp(14), 0, 0);
-        android.widget.Button car = Ui.botaoGradiente(this, "🪪  Compartilhar carteirinha");
+        android.widget.Button car = Ui.botaoGradiente(this, "🪪  Compartilhar carteirinha (com QR)");
         car.setOnClickListener(v -> enviarCarteirinha());
         b.addView(car, Ui.lp(-1, dp(54)));
+        android.widget.Button qrb = Ui.botao(this, "🏷️  QR code para a coleira", false);
+        qrb.setOnClickListener(v -> qrColeira());
+        LinearLayout.LayoutParams ql = Ui.lp(-1, dp(52));
+        ql.topMargin = dp(10);
+        b.addView(qrb, ql);
+        android.widget.Button wg = Ui.botao(this, "🏠  Colocar widget na tela inicial", false);
+        wg.setOnClickListener(v -> widget());
+        LinearLayout.LayoutParams wl = Ui.lp(-1, dp(52));
+        wl.topMargin = dp(10);
+        b.addView(wg, wl);
         android.widget.Button pdf = Ui.botao(this, "📄  Ficha completa em PDF (para o veterinário)", false);
         pdf.setOnClickListener(v -> enviarPdf());
         LinearLayout.LayoutParams pl = Ui.lp(-1, dp(52));
@@ -987,12 +1001,109 @@ public class PetActivity extends Activity {
     // ================================================================== compartilhar
 
     private void compartilhar() {
-        String[] op = {"🪪  Carteirinha (imagem)", "📄  Ficha completa em PDF", "💬  Resumo em texto (WhatsApp)"};
-        new AlertDialog.Builder(this).setTitle("Compartilhar " + pet.nome).setItems(op, (d, w) -> {
+        String[] op = {"🪪  Carteirinha com QR code (imagem)", "🏷️  QR code para a coleira", "🏠  Widget na tela inicial",
+                "📄  Ficha completa em PDF", "💬  Resumo em texto (WhatsApp)"};
+        new AlertDialog.Builder(this).setTitle(pet.nome).setItems(op, (d, w) -> {
             if (w == 0) enviarCarteirinha();
-            else if (w == 1) enviarPdf();
+            else if (w == 1) qrColeira();
+            else if (w == 2) widget();
+            else if (w == 3) enviarPdf();
             else enviarTexto();
         }).show();
+    }
+
+    private void widget() {
+        new AlertDialog.Builder(this).setTitle("Widget do " + pet.nome)
+                .setMessage("Mostra a foto, a próxima vacina e os lembretes na tela inicial. Quer incluir o QR code da coleira no widget?")
+                .setPositiveButton("Com QR code", (d, w) -> WidgetPet.fixar(this, pet.id, true))
+                .setNegativeButton("Sem QR code", (d, w) -> WidgetPet.fixar(this, pet.id, false))
+                .show();
+    }
+
+    /** QR code da coleira: escolha o que aparece para quem encontrar o dog */
+    private void qrColeira() {
+        Qr.Opcoes o = Qr.opcoes(this, pet.id);
+        ScrollView sv = new ScrollView(this);
+        LinearLayout v = Ui.coluna(this);
+        v.setPadding(dp(20), dp(8), dp(20), dp(4));
+        sv.addView(v);
+        v.addView(Ui.texto(this, "Quem encontrar o " + pet.nome + " aponta a câmera do celular e vê estas informações (funciona sem internet).", 13, k.sub, false));
+        android.widget.ImageView img = new android.widget.ImageView(this);
+        img.setBackground(Ui.fundo(0xFFFFFFFF, dp(16)));
+        img.setPadding(dp(10), dp(10), dp(10), dp(10));
+        LinearLayout.LayoutParams il = Ui.lp(dp(230), dp(230));
+        il.gravity = Gravity.CENTER_HORIZONTAL;
+        il.topMargin = dp(12);
+        v.addView(img, il);
+        TextView previa = Ui.texto(this, "", 12, k.sub, false);
+        previa.setPadding(dp(12), dp(10), dp(12), dp(10));
+        previa.setBackground(Ui.fundo(k.chip, dp(12)));
+        LinearLayout.LayoutParams pl = Ui.lp(-1, -2);
+        pl.topMargin = dp(10);
+        v.addView(previa, pl);
+        Runnable pintar = () -> {
+            String t = Qr.textoColeira(this, pet, o);
+            img.setImageBitmap(Qr.gerar(t, 600, 0xFF000000, 0xFFFFFFFF));
+            previa.setText(t);
+        };
+        EditText msg = Campos.multilinha(this, v, "Mensagem", o.mensagem, "Ex.: Estou perdido, ligue para minha família", true);
+        msg.setMinLines(2);
+        msg.addTextChangedListener(new android.text.TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            public void onTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            public void afterTextChanged(android.text.Editable s) {
+                o.mensagem = s.toString();
+                pintar.run();
+            }
+        });
+        opcao(v, "👤 Nome do tutor", o.dono, x -> o.dono = x, pintar);
+        opcao(v, "📞 Telefone" + (pet.telefone.isEmpty() ? " (cadastre no pet)" : ""), o.telefone, x -> o.telefone = x, pintar);
+        opcao(v, "📍 Bairro e cidade", o.local, x -> o.local = x, pintar);
+        opcao(v, "⚠️ Observações / cuidados de saúde", o.saude, x -> o.saude = x, pintar);
+        opcao(v, "🛡️ Plano de saúde", o.plano, x -> o.plano = x, pintar);
+        opcao(v, "💉 Vacinas", o.vacinas, x -> o.vacinas = x, pintar);
+        TextView aviso = Ui.texto(this, "Por segurança, CPF, RG e endereço completo nunca entram no QR da coleira.", 12, k.sub, false);
+        aviso.setPadding(0, dp(10), 0, 0);
+        v.addView(aviso);
+        pintar.run();
+        new AlertDialog.Builder(this).setTitle("🏷️ QR code da coleira").setView(sv)
+                .setPositiveButton("Compartilhar / imprimir", (d, w) -> {
+                    Qr.salvar(this, pet.id, o);
+                    WidgetPet.atualizarTodos(this);
+                    try {
+                        enviarArquivo(Relatorios.etiquetaColeira(this, pet, Qr.textoColeira(this, pet, o)), "image/png", "QR da coleira do " + pet.nome);
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Não consegui gerar a imagem", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNeutralButton("Salvar", (d, w) -> {
+                    Qr.salvar(this, pet.id, o);
+                    WidgetPet.atualizarTodos(this);
+                    Toast.makeText(this, "QR atualizado (também no widget)", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Fechar", null).show();
+    }
+
+    interface AoBool {
+        void v(boolean b);
+    }
+
+    private void opcao(LinearLayout v, String t, boolean on, AoBool cb, Runnable depois) {
+        android.widget.Switch s = new android.widget.Switch(this);
+        s.setText(t);
+        s.setTextColor(k.texto);
+        s.setTextSize(14);
+        s.setChecked(on);
+        s.setPadding(0, dp(10), 0, dp(2));
+        s.setOnCheckedChangeListener((x, b) -> {
+            cb.v(b);
+            depois.run();
+        });
+        v.addView(s);
     }
 
     private void enviarArquivo(File f, String mime, String titulo) {

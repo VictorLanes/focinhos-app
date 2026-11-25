@@ -5,8 +5,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <application
+        android:name=".App"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
@@ -22,6 +24,21 @@
         <activity android:name=".PetActivity" android:exported="false" android:launchMode="singleTop" />
         <activity android:name=".PetFormActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".RegistroActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
+
+        <activity android:name=".BloqueioActivity" android:exported="false" android:launchMode="singleTop"
+            android:excludeFromRecents="true" android:screenOrientation="portrait" />
+        <activity android:name=".WidgetPet$Config" android:exported="true" android:excludeFromRecents="true"
+            android:taskAffinity="com.victorlanes.focinhos.widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <receiver android:name=".WidgetPet" android:exported="true" android:label="@string/widget_nome">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_pet" />
+        </receiver>
 
         <receiver android:name=".Avisos" android:exported="true">
             <intent-filter>

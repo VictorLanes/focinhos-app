@@ -47,6 +47,7 @@ public class Avisos extends BroadcastReceiver {
             if (k.getTimeInMillis() <= agora) k.add(Calendar.YEAR, 1);
             definir(am, k.getTimeInMillis(), op);
         }
+        WidgetPet.atualizarTodos(c);
     }
 
     private static void definir(AlarmManager am, long t, PendingIntent op) {
